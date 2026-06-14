@@ -1,13 +1,13 @@
-import Binance from 'binance-api-node';
-
-const binance = Binance({
-  apiKey: process.env.BINANCE_API_KEY,
-  apiSecret: process.env.BINANCE_API_SECRET,
-});
-
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import Binance from "binance-api-node";
+
+// Correção para ESM
+const binance = (Binance.default || Binance)({
+  apiKey: process.env.BINANCE_API_KEY,
+  apiSecret: process.env.BINANCE_API_SECRET,
+});
 
 const server = new Server(
   {
@@ -30,14 +30,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {
-            symbol: { type: "string" },
+            symbol: { type: "string", description: "Par de trading (ex: BTCUSDT)" },
           },
           required: ["symbol"],
         },
       },
       {
         name: "get_account",
-        description: "Obter informações da conta",
+        description: "Obter informações da conta Binance",
         inputSchema: {
           type: "object",
           properties: {},
@@ -52,9 +52,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     if (name === "get_ticker") {
-      const price = await binance.prices({ symbol: args.symbol });
+      const ticker = await binance.prices({ symbol: args.symbol });
       return {
-        content: [{ type: "text", text: JSON.stringify(price, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify(ticker, null, 2) }],
       };
     }
 
@@ -65,10 +65,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       };
     }
 
-    throw new Error("Tool not found");
+    throw new Error(`Ferramenta desconhecida: ${name}`);
   } catch (error) {
     return {
-      content: [{ type: "text", text: error.message }],
+      content: [{ type: "text", text: `Erro: ${error.message}` }],
       isError: true,
     };
   }
